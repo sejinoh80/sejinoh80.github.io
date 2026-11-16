@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<!--
+  카카오톡 카드 버튼 → 유튜브 앱 바로 열기 (seomoon-media-agent [card] video_link_url).
+  카카오 카드 버튼은 https 주소만 받고 카톡 안 브라우저로 연다. 이 페이지가 열리면 바로 유튜브 앱을 부른다.
+    yt.html?v=<영상 ID 11자>
+  안드로이드: intent:// (앱이 없으면 browser_fallback_url 로 유튜브 웹), 아이폰: youtube:// (안 열리면 웹).
+  자동으로 안 넘어가는 경우를 위해 큰 버튼을 둔다. 유튜브 앱에서 돌아오면 카톡 안 브라우저를 닫는다.
+  원본: seomoon-media-agent/pages/yt.html — GitHub Pages 저장소에 그대로 복사한다.
+-->
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>유튜브로 이동</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+         font-family: -apple-system, "Noto Sans KR", sans-serif; background: #fff; color: #222; gap: 20px; }
+  a.app { display: block; padding: 18px 36px; border-radius: 12px; background: #e00; color: #fff; font-size: 20px;
+          font-weight: 700; text-decoration: none; }
+  a.web { color: #666; font-size: 15px; }
+  p { margin: 0; font-size: 16px; }
+</style>
+</head>
+<body>
+<p id="msg">유튜브 앱을 여는 중입니다…</p>
+<a class="app" id="app" href="https://www.youtube.com/@SeomoonChurch">유튜브 앱으로 보기</a>
+<a class="web" id="web" href="https://www.youtube.com/@SeomoonChurch">웹에서 보기</a>
+<script>
+(function () {
+  var id = new URLSearchParams(location.search).get("v") || "";
+  if (!/^[A-Za-z0-9_-]{11}$/.test(id)) {  // 영상 ID 가 아니면 채널로 (다른 주소로는 보내지 않는다)
+    document.getElementById("msg").textContent = "영상 주소가 올바르지 않습니다.";
+    return;
+  }
+  var web = "https://www.youtube.com/watch?v=" + id;
+  var ua = navigator.userAgent;
+  var android = /Android/i.test(ua), ios = /iPhone|iPad|iPod/i.test(ua), kakao = /KAKAOTALK/i.test(ua);
+  var app = web;
+  if (android) {
+    app = "intent://www.youtube.com/watch?v=" + id + "#Intent;scheme=https;package=com.google.android.youtube;" +
+          "S.browser_fallback_url=" + encodeURIComponent(web) + ";end";
+  } else if (ios) {
+    app = "youtube://www.youtube.com/watch?v=" + id;
+  }
+  document.getElementById("app").href = app;
+  document.getElementById("web").href = web;
+
+  var left = false;
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) { left = true; return; }
+    // 유튜브 앱에서 카톡으로 돌아오면 빈 페이지가 남지 않게 카톡 안 브라우저를 닫는다
+    if (left && kakao) location.href = "kakaotalk://inappbrowser/close";
+  });
+
+  if (android || ios) {
+    location.href = app;
+    if (ios) setTimeout(function () { if (!left) location.href = web; }, 2000);  // 앱이 없으면 웹으로
+  } else {
+    location.replace(web);  // PC 는 그냥 유튜브 웹
+  }
+})();
+</script>
+</body>
+</html>
